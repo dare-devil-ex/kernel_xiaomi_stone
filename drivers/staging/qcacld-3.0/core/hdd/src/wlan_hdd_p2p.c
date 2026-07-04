@@ -709,6 +709,11 @@ struct wireless_dev *__wlan_hdd_add_virtual_intf(struct wiphy *wiphy,
 	int ret;
 
 	hdd_enter();
+	
+	if (type == NL80211_IFTYPE_MONITOR) {
+    hdd_err("Monitor mode forced");
+
+}
 
 	if (hdd_get_conparam() == QDF_GLOBAL_FTM_MODE) {
 		hdd_err("Command not allowed in FTM mode");

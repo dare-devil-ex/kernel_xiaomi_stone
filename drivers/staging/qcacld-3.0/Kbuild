@@ -232,6 +232,16 @@ ifeq ($(CONFIG_LITHIUM), y)
 HDD_OBJS += $(HDD_SRC_DIR)/wlan_hdd_rx_monitor.o
 endif
 
+ifeq ($(CONFIG_FEATURE_FRAME_INJECTION_SUPPORT), y)
+HDD_OBJS += $(HDD_SRC_DIR)/wlan_hdd_frame_inject.o
+HDD_OBJS += $(HDD_SRC_DIR)/wlan_hdd_frame_validate.o
+HDD_OBJS += $(HDD_SRC_DIR)/wlan_hdd_inject_security.o
+HDD_OBJS += $(HDD_SRC_DIR)/wlan_hdd_frame_inject_debug.o
+ifeq ($(CONFIG_WLAN_UNIT_TEST), y)
+HDD_OBJS += $(HDD_SRC_DIR)/wlan_hdd_frame_validate_test.o
+endif
+endif
+
 ifeq ($(CONFIG_LITHIUM), y)
 CONFIG_WLAN_FEATURE_DP_RX_THREADS := y
 CONFIG_WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT := y
@@ -670,7 +680,6 @@ else
 DFS_OBJS +=	$(WLAN_COMMON_ROOT)/target_if/dfs/src/target_if_dfs_partial_offload.o \
 		$(DFS_CORE_SRC_DIR)/filtering/dfs_fcc_bin5.o \
 		$(DFS_CORE_SRC_DIR)/filtering/dfs_bindetects.o \
-		$(DFS_CORE_SRC_DIR)/filtering/dfs_debug.o \
 		$(DFS_CORE_SRC_DIR)/filtering/dfs_init.o \
 		$(DFS_CORE_SRC_DIR)/filtering/dfs_misc.o \
 		$(DFS_CORE_SRC_DIR)/filtering/dfs_phyerr_tlv.o \
@@ -680,6 +689,9 @@ DFS_OBJS +=	$(WLAN_COMMON_ROOT)/target_if/dfs/src/target_if_dfs_partial_offload.
 		$(DFS_CORE_SRC_DIR)/filtering/dfs_radar.o \
 		$(DFS_CORE_SRC_DIR)/filtering/dfs_partial_offload_radar.o \
 		$(DFS_CORE_SRC_DIR)/misc/dfs_filter_init.o
+ifdef DFS_DEBUG
+DFS_OBJS +=	$(DFS_CORE_SRC_DIR)/filtering/dfs_debug.o
+endif
 endif
 endif
 
@@ -754,8 +766,10 @@ WLAN_LOGGING_INC_DIR :=	$(WLAN_LOGGING_DIR)/inc
 WLAN_LOGGING_SRC_DIR :=	$(WLAN_LOGGING_DIR)/src
 
 WLAN_LOGGING_INC     := -I$(WLAN_ROOT)/$(WLAN_LOGGING_INC_DIR)
+ifeq ($(BUILD_DEBUG_VERSION), 1)
 WLAN_LOGGING_OBJS    := $(WLAN_LOGGING_SRC_DIR)/wlan_logging_sock_svc.o \
 		$(WLAN_LOGGING_SRC_DIR)/wlan_roam_debug.o
+endif
 
 $(call add-wlan-objs,wlan_logging,$(WLAN_LOGGING_OBJS))
 
@@ -2387,6 +2401,20 @@ WMA_OBJS :=	$(WMA_SRC_DIR)/wma_main.o \
 		$(WMA_SRC_DIR)/wlan_qct_wma_legacy.o\
 		$(WMA_NDP_OBJS)
 
+ifeq ($(CONFIG_FEATURE_FRAME_INJECTION_SUPPORT), y)
+WMA_OBJS += $(WMA_SRC_DIR)/wma_frame_inject.o
+endif
+
+#######DIRECT_BUFFER_RX#########
+ifeq ($(CONFIG_DIRECT_BUF_RX_ENABLE), y)
+DBR_DIR = $(WLAN_COMMON_ROOT)/target_if/direct_buf_rx
+UMAC_DBR_INC := -I$(WLAN_COMMON_INC)/target_if/direct_buf_tx/inc
+UMAC_DBR_OBJS := $(DBR_DIR)/src/target_if_direct_buf_rx_api.o \
+		 $(DBR_DIR)/src/target_if_direct_buf_rx_main.o \
+		 $(WLAN_COMMON_ROOT)/wmi/src/wmi_unified_dbr_api.o \
+		 $(WLAN_COMMON_ROOT)/wmi/src/wmi_unified_dbr_tlv.o
+endif
+
 ifeq ($(CONFIG_WLAN_FEATURE_DSRC), y)
 WMA_OBJS+=	$(WMA_SRC_DIR)/wma_ocb.o
 endif
@@ -2609,9 +2637,11 @@ INCS +=		$(COEX_CORE_INC)
 
 ccflags-y += $(INCS)
 
+# LTO does way too much here
+ccflags-y += $(DISABLE_LTO)
+
 cppflags-y +=	-DANI_OS_TYPE_ANDROID=6 \
 		-Wall\
-		-Werror\
 		-D__linux__
 
 cppflags-$(CONFIG_THERMAL_STATS_SUPPORT) += -DTHERMAL_STATS_SUPPORT
@@ -2721,6 +2751,12 @@ else
 cppflags-y += -DDISABLE_MON_CONFIG
 endif
 
+ifeq ($(CONFIG_FEATURE_FRAME_INJECTION_SUPPORT), y)
+cppflags-y += -DFEATURE_FRAME_INJECTION_SUPPORT
+# Enable monitor mode support for frame injection
+CONFIG_FEATURE_MONITOR_MODE_SUPPORT := y
+endif
+
 #Enable NL80211 test mode
 cppflags-$(CONFIG_NL80211_TESTMODE) += -DWLAN_NL80211_TESTMODE
 
@@ -2755,7 +2791,7 @@ cppflags-$(CONFIG_FEATURE_PKTLOG) +=     -DFEATURE_PKTLOG
 
 ifeq ($(CONFIG_WLAN_NAPI), y)
 cppflags-y += -DFEATURE_NAPI
-cppflags-y += -DHIF_IRQ_AFFINITY
+#cppflags-y += -DHIF_IRQ_AFFINITY
 ifeq ($(CONFIG_WLAN_NAPI_DEBUG), y)
 cppflags-y += -DFEATURE_NAPI_DEBUG
 endif
@@ -3743,7 +3779,7 @@ cppflags-$(CONFIG_MORE_TX_DESC) += -DTX_TO_NPEERS_INC_TX_DESCS
 
 ccflags-$(CONFIG_HASTINGS_BT_WAR) += -DHASTINGS_BT_WAR
 
-cppflags-y += -DHIF_CONFIG_SLUB_DEBUG_ON
+cppflags-$(CONFIG_SLUB_DEBUG_ON) += -DHIF_CONFIG_SLUB_DEBUG_ON
 cppflags-$(CONFIG_SLUB_DEBUG_ON) += -DHAL_CONFIG_SLUB_DEBUG_ON
 
 ccflags-$(CONFIG_FOURTH_CONNECTION) += -DFEATURE_FOURTH_CONNECTION

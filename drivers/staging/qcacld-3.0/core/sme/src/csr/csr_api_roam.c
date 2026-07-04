@@ -10165,6 +10165,9 @@ void csr_roam_joined_state_msg_processor(struct mac_context *mac, void *msg_buf)
 							(struct qdf_mac_addr *)
 							   pUpperLayerAssocCnf->
 							   bssId, &sessionId);
+		if (!QDF_IS_STATUS_SUCCESS(status))
+			return;
+
 		pSession = CSR_GET_SESSION(mac, sessionId);
 
 		if (!pSession) {
@@ -16533,6 +16536,10 @@ void csr_get_vdev_type_nss(enum QDF_OPMODE dev_mode, uint8_t *nss_2g,
 
 	switch (dev_mode) {
 	case QDF_STA_MODE:
+		*nss_2g = mac_ctx->vdev_type_nss_2g.sta;
+		*nss_5g = mac_ctx->vdev_type_nss_5g.sta;
+		break;
+	case QDF_MONITOR_MODE:
 		*nss_2g = mac_ctx->vdev_type_nss_2g.sta;
 		*nss_5g = mac_ctx->vdev_type_nss_5g.sta;
 		break;

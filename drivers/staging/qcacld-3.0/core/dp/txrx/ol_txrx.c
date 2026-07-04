@@ -877,6 +877,12 @@ ol_txrx_pdev_attach(ol_txrx_soc_handle soc,
 		status = QDF_STATUS_E_NOMEM;
 		goto fail0;
 	}
+	/*
+	 * Ensure deterministic default before WMI service bitmap is available.
+	 * flow-control setup in pdev_post_attach depends on this flag to decide
+	 * whether to create the legacy global mgmt tx pool.
+	 */
+	pdev->is_mgmt_over_wmi_enabled = 0;
 
 	/* init LL/HL cfg here */
 	pdev->cfg.is_high_latency = ol_cfg_is_high_latency(cfg_pdev);
@@ -1448,6 +1454,15 @@ ol_txrx_pdev_post_attach(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
 	 * Initialize rx PN check characteristics for different security types.
 	 */
 	qdf_mem_zero(&pdev->rx_pn[0], sizeof(pdev->rx_pn));
+
+	/* WEP: 24-bit PN */
+	pdev->rx_pn[htt_sec_type_wep40].len =
+		pdev->rx_pn[htt_sec_type_wep104].len =
+			pdev->rx_pn[htt_sec_type_wep128].len = 24;
+
+	pdev->rx_pn[htt_sec_type_wep40].cmp =
+		pdev->rx_pn[htt_sec_type_wep104].cmp =
+			pdev->rx_pn[htt_sec_type_wep128].cmp = ol_rx_pn_cmp24;
 
 	/* TKIP: 48-bit TSC, CCMP: 48-bit PN */
 	pdev->rx_pn[htt_sec_type_tkip].len =
