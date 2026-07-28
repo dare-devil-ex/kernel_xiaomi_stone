@@ -2229,7 +2229,7 @@ void lim_calculate_tpc(struct mac_context *mac,
 				wlan_reg_get_client_power_for_connecting_ap(
 				mac->pdev, ap_power_type_6g,
 				mlme_obj->reg_tpc_obj.frequency[i],
-				&is_psd_power, &reg_max, &psd_power);
+				is_psd_power, &reg_max, &psd_power);
 			}
 		} else {
 			/* center frequency calculation */

@@ -65,11 +65,11 @@ int sha3_256_hmac(unsigned char *key, int key_len, unsigned char *message, int m
 	unsigned char tmac[256];
 	unsigned char cat_input_thash[1024];
 	unsigned char cat_input_final[1024];
+	unsigned char opad[136];
+        unsigned char ipad[136];
 
 	int blocksize = 136;
 	int hashsize = 32;
-	unsigned char opad[136];
-	unsigned char ipad[136];
 
 	memset(opad, 0x5C, blocksize);
 	memset(ipad, 0x36, blocksize);
