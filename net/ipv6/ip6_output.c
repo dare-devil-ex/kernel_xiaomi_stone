@@ -1692,6 +1692,9 @@ alloc_new_skb:
 				    offset, copy, skb->len, skb) < 0)
 				goto error_efault;
 
+			if (!(flags & MSG_NO_SHARED_FRAGS))
+				skb_shinfo(skb)->tx_flags |= SKBTX_SHARED_FRAG;
+
 			pfrag->offset += copy;
 			skb_frag_size_add(&skb_shinfo(skb)->frags[i - 1], copy);
 			skb->len += copy;
