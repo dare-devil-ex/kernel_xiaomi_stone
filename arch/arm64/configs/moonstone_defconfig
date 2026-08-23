@@ -97,6 +97,7 @@ CONFIG_BT_MTKSDIO=y
 # ------------ DARE DEVIL EX ---------------
 CONFIG_LD_DEAD_CODE_DATA_ELIMINATION=y
 CONFIG_WQ_POWER_EFFICIENT_DEFAULT=y
+CONFIG_NET_SCH_TBF=y
 # -------------------------------------------
 
 CONFIG_TASKSTATS=y
