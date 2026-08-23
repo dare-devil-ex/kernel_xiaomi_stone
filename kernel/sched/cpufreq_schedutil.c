@@ -25,6 +25,7 @@ struct sugov_tunables {
 	unsigned int		hispeed_freq;
 	unsigned int		rtg_boost_freq;
 	bool			pl;
+	bool			iowait_boost_enable;
 };
 
 struct sugov_policy {
@@ -493,7 +494,10 @@ static bool sugov_iowait_reset(struct sugov_cpu *sg_cpu, u64 time,
 static void sugov_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
 			       unsigned int flags)
 {
-	bool set_iowait_boost = flags & SCHED_CPUFREQ_IOWAIT;
+	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
+	bool set_iowait_boost = sg_policy->tunables->iowait_boost_enable ?
+					flags & SCHED_CPUFREQ_IOWAIT :
+					false;
 
 	/* Reset boost if the CPU appears to have been idle enough */
 	if (sg_cpu->iowait_boost &&
@@ -912,6 +916,27 @@ static ssize_t up_rate_limit_us_store(struct gov_attr_set *attr_set,
 	return count;
 }
 
+static ssize_t iowait_boost_enable_show(struct gov_attr_set *attr_set,
+					char *buf)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+
+	return sprintf(buf, "%u\n", tunables->iowait_boost_enable);
+}
+
+static ssize_t iowait_boost_enable_store(struct gov_attr_set *attr_set,
+					 const char *buf, size_t count)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+	bool enable;
+
+	if (kstrtobool(buf, &enable))
+		return -EINVAL;
+
+	tunables->iowait_boost_enable = enable;
+	return count;
+}
+
 static ssize_t down_rate_limit_us_store(struct gov_attr_set *attr_set,
 					const char *buf, size_t count)
 {
@@ -1038,6 +1063,8 @@ static struct governor_attr hispeed_load = __ATTR_RW(hispeed_load);
 static struct governor_attr hispeed_freq = __ATTR_RW(hispeed_freq);
 static struct governor_attr rtg_boost_freq = __ATTR_RW(rtg_boost_freq);
 static struct governor_attr pl = __ATTR_RW(pl);
+static struct governor_attr iowait_boost_enable =
+	__ATTR_RW(iowait_boost_enable);
 
 static struct attribute *sugov_attrs[] = {
 	&up_rate_limit_us.attr,
@@ -1046,6 +1073,7 @@ static struct attribute *sugov_attrs[] = {
 	&hispeed_freq.attr,
 	&rtg_boost_freq.attr,
 	&pl.attr,
+	&iowait_boost_enable.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(sugov);
@@ -1246,6 +1274,7 @@ static int sugov_init(struct cpufreq_policy *policy)
 	tunables->down_rate_limit_us = cpufreq_policy_transition_delay_us(policy);
 	tunables->hispeed_load = DEFAULT_HISPEED_LOAD;
 	tunables->hispeed_freq = 0;
+	tunables->iowait_boost_enable = false;
 
 	switch (policy->cpu) {
 	default:
